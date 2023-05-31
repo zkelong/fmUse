@@ -6,30 +6,6 @@ import xlrd
 import openpyxl
 import math
 
-# 学号对应的总数量 [{"nid": "12345566", "num": 1}] #nid: 学号; num: 学号数量
-idArr = []
-
-# 学号当前已排到的场次 ["nid": "123566", "ss": 12] # nid: 学号； ss: 场次
-sessionInfo = []
-
-# 场次数据，每场次已排了多少人 [{"ss": "1", "num":1}]
-sessionNumInfo = []
-
-# 每天场次
-daySessionNum = 6.0
-
-# 每场最多安排人数
-# 前10场最多100人
-sessionFrontNum = 10
-sessionMaxNum1 = 100
-# 后续最多100人
-sessionMaxNum2 = 100
-
-# 待处理文件
-originalCsv = u"original.csv"
-# 处理结果文件
-resultCsv = u"sort_resultXX.csv"
-
 # ///////////////////////////////////////////////////
 # 排布规则:
 # 能排一天的不跨天
