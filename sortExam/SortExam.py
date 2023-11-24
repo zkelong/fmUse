@@ -5,6 +5,7 @@ import xlrd
 # 解析 xlsx
 import openpyxl
 import math
+from datetime import datetime, timedelta
 
 # ///////////////////////////////////////////////////
 # 排布规则:
@@ -28,8 +29,8 @@ s_head = ""
 
 # 表结构
 # 考点编号*,考点名称*,时间单元编号*,考试开始时间*,考场编号*,考场名称*,座位号*,考生学号*,考生姓名*,课程编号*,课程名称*,试卷号*
-s_keyIndex = 7  # 索引字段
-s_typeIndex = 9  # 类型索引
+s_keyIndex = 0  # 索引字段
+s_typeIndex = 11  # 类型索引
 
 # 待处理文件
 s_originalFile = u"original.csv"
@@ -40,41 +41,38 @@ s_resultFile = u"sort_resultXX.csv"
 s_personKeys = []
 
 # 时间排布
-s_begin_month = 5
-s_begin_day = 31
+s_begin_year = 2013
+s_begin_month = 12
+s_begin_day = 4
 s_times = ["8:30", "10:30", "12:30", "14:30", "16:30", "18:30"]
 
+# 获取指定年月日相差天数的，年月日
+def calculate_new_date(year, month, day, days_difference):
+    # 构造日期对象
+    current_date = datetime(year, month, day)
+    # 计算相差指定天数后的日期
+    new_date = current_date + timedelta(days=days_difference)
+    return new_date.year, new_date.month, new_date.day
 
 # 人
 def getTime(session):
-    global s_dayNum
+    global s_begin_year
     global s_begin_month
     global s_begin_day
+    global s_dayNum
     global s_times
 
-    month = 0
-    day = 0
-    if session <= s_dayNum:
-        month = s_begin_month
-        day = s_begin_day
-    else:
-        month = s_begin_month + 1
-        day = math.ceil(session / s_dayNum) - 1
-
+    year, month, day = calculate_new_date(s_begin_year, s_begin_month, s_begin_day, session / s_dayNum)
     index = session % s_dayNum
     if index == 0:
         index = len(s_times)
     index = index - 1
 
-    tag = "0" + str(month)
+    if month < 10:
+        month = "0" + str(month)
     if day < 10:
-        tag += "-0" + str(day).replace(".0", "")
-    else:
-        tag += "-" + str(day).replace(".0", "")
-    tag += "-00" + str(index + 1)
-
-    return "2023/" + str(month) + "/" + str(day).replace(".0", "") + " " + s_times[int(index)], tag.replace(".0", "")
-
+        day = "0" + str(day)
+    return str(s_begin_year) + "/" + str(month) + "/" + str(day).replace(".0", "") + " " + s_times[int(index)], str(session)
 
 class Person:
     def __init__(self, _key, _type):
