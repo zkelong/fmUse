@@ -12,39 +12,42 @@ from datetime import datetime, timedelta
 # 能排一天的不跨天
 # 一周能考完的不跨周
 # openpyxl: pip install openpyxl
+# 使用 python3 运行脚本
 # ///////////////////////////////////////////////////
 
 # 每日场次 python 2.7 整数相除为整数，没有小数
-s_dayNum = 6.0
+# 使用 python3
+s_dayNum = 5
 # 每场人数
-s_sessionNum = 100
-# 开始时间(周几)
-s_beginWeekDay = 3
-# 开始周考试天数
-s_beginWeekSessionNum = 0
+s_sessionNum = 20
 # 周末考试
-s_weekEnd = True
-# 表头
-s_head = ""
+s_weekEnd = False
+
+# 时间排布
+s_begin_year = 2023
+s_begin_month = 12
+s_begin_day = 11
+s_times = ["8:30", "10:30", "12:30", "14:30", "16:30", "18:30"]
 
 # 表结构
 # 考点编号*,考点名称*,时间单元编号*,考试开始时间*,考场编号*,考场名称*,座位号*,考生学号*,考生姓名*,课程编号*,课程名称*,试卷号*
-s_keyIndex = 0  # 索引字段
-s_typeIndex = 11  # 类型索引
+s_keyIndex = 0  # 索引字段-学号
+s_typeIndex = 6  # 类型索引-课程编号
+
+# 开始时间(周几)
+s_beginWeekDay = 0
+# 开始周考试天数
+s_beginWeekSessionNum = 0
+# 表头
+s_head = ""
+
 
 # 待处理文件
-s_originalFile = u"original.csv"
-# 处理结果文件
-s_resultFile = u"sort_resultXX.csv"
+s_originalFile = None
 
 # 考生
 s_personKeys = []
 
-# 时间排布
-s_begin_year = 2013
-s_begin_month = 12
-s_begin_day = 4
-s_times = ["8:30", "10:30", "12:30", "14:30", "16:30", "18:30"]
 
 # 获取指定年月日相差天数的，年月日
 def calculate_new_date(year, month, day, days_difference):
@@ -62,7 +65,8 @@ def getTime(session):
     global s_dayNum
     global s_times
 
-    year, month, day = calculate_new_date(s_begin_year, s_begin_month, s_begin_day, session / s_dayNum)
+    year, month, day = calculate_new_date(s_begin_year, s_begin_month, s_begin_day, (session - 1) / s_dayNum)
+    
     index = session % s_dayNum
     if index == 0:
         index = len(s_times)
@@ -72,7 +76,7 @@ def getTime(session):
         month = "0" + str(month)
     if day < 10:
         day = "0" + str(day)
-    return str(s_begin_year) + "/" + str(month) + "/" + str(day).replace(".0", "") + " " + s_times[int(index)], str(session)
+    return str(year) + "/" + str(month) + "/" + str(day) + " " + s_times[int(index)], str(session)
 
 class Person:
     def __init__(self, _key, _type):
@@ -257,7 +261,7 @@ def isSessionOverDayOrWeek(session, person):
     global s_dayNum
     global s_weekEnd
     global s_beginWeekSessionNum
-
+    
     _personLineNum = person.getRowNum()
     ### 是否超天
     # 需要用到考试天数
@@ -361,6 +365,7 @@ def generateResult(headRow, personArr, resultFile):
     print(u"写入详细.....")
     # 上面加了头，从第二行开始写
     _rowIndex = 2
+    personIndex = 0
     for person in personArr:
         _personKey = person.getKey()
         # 获取从哪场开始排
@@ -368,6 +373,7 @@ def generateResult(headRow, personArr, resultFile):
         addSessionInfo(_sessionInfo, session, person)
         _sortKeys.append(_personKey)
         person.setSession(session)
+        personIndex += 1
         for index, row in enumerate(person.getRows()):
             for _index, value in enumerate(row.values):
                 # row, column 从 1 开始
@@ -384,6 +390,10 @@ def generateResult(headRow, personArr, resultFile):
 
 if __name__ == '__main__':
     print("__main__>>>>>>>>>>>>>>>>>>>>>>>>")
+    if sys.version_info.major < 3:
+        print(u"使用 python3 执行脚本！！！！！")
+        exit()
+    
     if len(sys.argv) < 2:
         print(u"请输入要排序的文件名!")
         exit()
@@ -391,7 +401,7 @@ if __name__ == '__main__':
     if not os.path.isfile(s_originalFile):
         print(u"输入的文件不存在！")
         exit()
-
+        
     headRow = None
     personArr = None
     _, file_ext = os.path.splitext(s_originalFile)
@@ -404,6 +414,11 @@ if __name__ == '__main__':
         print(u"只支持排序 .xlsx 和 .xls 文件")
         exit()
 
+    # 开始时间(周几)
+    dateObject = datetime(s_begin_year, s_begin_month, s_begin_day)
+    # 获取星期几（0为星期一，1为星期二，以此类推）
+    s_beginWeekDay = dateObject.weekday() + 1
+    
     resultFile = os.path.splitext(s_originalFile)[0] + "_result.xlsx"
     sortPersons(personArr)
     generateResult(headRow, personArr, resultFile)
