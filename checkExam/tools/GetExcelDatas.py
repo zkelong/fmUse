@@ -33,57 +33,52 @@ class ExcelRow:
 # 读原文件 xls
 def readXls(file, haveHead):
     _workbook = xlrd.open_workbook(file)
-    _sheets = _workbook.sheets()
-    if len(_sheets) == 0:
-        print(u"excel 文件内容为空!!")
+    sheetNum = len(workbook.sheetnames)
+    if index >= sheetNum:
+        print("制定的第{}个sheet不存在，总共{}个sheet".format(index, sheetNum))
         exit()
-    if len(_sheets) > 1:
-        print(u"警告!!存在多个sheet, 只处理第一个sheet, 如后面的 sheet 要处理, 都拷贝到第一个 sheet!!!")
-        print(u"警告!!存在多个sheet, 只处理第一个sheet, 如后面的 sheet 要处理, 都拷贝到第一个 sheet!!!")
-        print(u"警告!!存在多个sheet, 只处理第一个sheet, 如后面的 sheet 要处理, 都拷贝到第一个 sheet!!!")
-    # sheet = _workbook.sheet_by_index(0)
-    sheet = _sheets[0]
+    sheet = workbook.worksheets[index]
+    print("当前读取第{}个sheet:{}".format(index, sheet.title))
+    rowArr = []
     row_index = 0
     rowArr = []
     for row in range(sheet.nrows):
         rowArr.append(ExcelRow(isHead = haveHead and row_index == 0))
         row_index += 1
-    return row
+    return rowArr, sheet.title
 
 
 # 读原文件 xlsx
-def readXlsx(file, haveHead):
+def readXlsx(file, haveHead, index):
     workbook = openpyxl.load_workbook(file)
-    if len(workbook.sheetnames) == 0:
-        print(u"文件:{} 内容为空!!".format(file))
+    sheetNum = len(workbook.sheetnames)
+    if index >= sheetNum:
+        print("制定的第{}个sheet不存在，总共{}个sheet".format(index, sheetNum))
         exit()
-    elif len(workbook.sheetnames) > 1:
-        print(u"警告!!存在多个sheet, 只处理第一个sheet, 如后面的 sheet 要处理, 都拷贝到第一个 sheet!!!")
-        print(u"警告!!存在多个sheet, 只处理第一个sheet, 如后面的 sheet 要处理, 都拷贝到第一个 sheet!!!")
-        print(u"警告!!存在多个sheet, 只处理第一个sheet, 如后面的 sheet 要处理, 都拷贝到第一个 sheet!!!")
-    sheet = workbook.worksheets[0]
+    sheet = workbook.worksheets[index]
+    print("当前读取第{}个sheet:{}".format(index, sheet.title))
     rowArr = []
     row_index = 0
     for _row in sheet.iter_rows():
         rowArr.append(ExcelRow(_row, haveHead and row_index == 0))
         row_index += 1
-    return rowArr
+    return rowArr, sheet.title
 
-def getExcelData(file, haveHead=True):
+def getExcelData(file, haveHead=True, index=0):
     if not os.path.isfile(file):
         print(u"文件:{} 不存在!".format(file))
         exit()
-    rowArr = None
+    rowArr, title = None, None
     _, file_ext = os.path.splitext(file)
     if file_ext == ".xlsx":
-        rowArr = readXlsx(file, haveHead)
+        rowArr, title = readXlsx(file, haveHead, index)
     elif file_ext == ".xls":
-        rowArr = readXls(file, haveHead)
+        rowArr, title = readXls(file, haveHead, index)
     else:
         print(u"只支持获取 .xlsx 和 .xls 文件内容")
         exit()
-    return rowArr
+    return rowArr, title
 
 # test
-rowArr = getExcelData("简阳考试名单.xlsx")
-print(len(rowArr))
+# rowArr = getExcelData("简阳考试名单.xlsx")
+# print(len(rowArr))
