@@ -105,6 +105,33 @@ def writeExelRow(sheet, rowIndex, info):
         cell.number_format = '0'  # 或者使用 '0.00' 等形式，确保数字以常规格式显示，而非科学计数法
         cell.value = _value
 
+# 所有考试信息
+class AllExamInfo:
+    def __init__(self):
+        self.file = ""
+        
+    # 根据 考试名单 获取每场考试信息
+    def getExamInfos():
+        # 关注的信息
+        head = ["试卷号","试卷名称","考场人数","考场号","教室","日期"]
+        # 关注信息对应的列
+        headIndexs = [13, 14, 0, 6, 19, 11]
+        
+        # 统计数据 日期	考场号	试卷号	试卷名称	考场人数	教室
+# 日期列标
+g_date_index = 11
+# 考场号列标
+g_exam_index = 6
+# 试卷号列标
+g_exam_paper_index = 13
+# 试卷名称列标
+g_exam_name_index = 14
+# 教室列表
+g_room_index = 19
+# 学号
+g_number_index = 0
+
+
 if __name__ == '__main__':
     print("__main__>>>>>>>>>>>>>>>>>>>>>>>>")
     repeat = checkSortReapt()

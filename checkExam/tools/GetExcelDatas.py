@@ -85,5 +85,5 @@ def getExcelData(file, haveHead=True):
     return rowArr
 
 # test
-# rowArr = getExcelData("简阳纸考23春(1).xlsx")
-# print(len(rowArr))
+rowArr = getExcelData("简阳考试名单.xlsx")
+print(len(rowArr))
