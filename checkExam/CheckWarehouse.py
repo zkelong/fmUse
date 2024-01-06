@@ -42,7 +42,7 @@ class ExamInfo:
         return ["试卷号","试卷名称","考场人数","31份装（袋）","26份装（袋）","11份装（袋）","5份装（袋）","合计（袋）","时间"]
     
     def getValues(self):
-        return [self.paperNo, self.paperName, self.num, self.pack31, self.pack26, self.pack11, self.pack5, self.packNum]
+        return [self.paperNo, self.paperName, self.num, self.pack31, self.pack26, self.pack11, self.pack5, self.packNum, self.date]
 
 # 所有入库信息
 class CheckWareHouseInfo:
@@ -191,6 +191,6 @@ class CheckWareHouseInfo:
             cell.value = _value
 
 # do
-# checkInfo = CheckWareHouseInfo()
-# checkInfo.checkInfos()
-# checkInfo.writeToFile()
+checkInfo = CheckWareHouseInfo()
+checkInfo.checkInfos()
+checkInfo.writeToFile()
