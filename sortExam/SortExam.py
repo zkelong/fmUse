@@ -15,24 +15,23 @@ from datetime import datetime, timedelta
 # 使用 python3 运行脚本
 # ///////////////////////////////////////////////////
 
-# 每日场次 python 2.7 整数相除为整数，没有小数
-# 使用 python3
-s_dayNum = 5
+# 每日场次 python 2.7 整数相除为整数，没有小数>>>使用 python3
+s_dayNum = 6
 # 每场人数
-s_sessionNum = 20
+s_sessionNum = 85
 # 周末考试
-s_weekEnd = False
+s_weekEnd = True
 
 # 时间排布
-s_begin_year = 2023
-s_begin_month = 12
-s_begin_day = 11
-s_times = ["8:30", "10:30", "12:30", "14:30", "16:30", "18:30"]
+s_begin_year = 2024
+s_begin_month = 6
+s_begin_day = 10
+s_times = ["08:30", "10:30", "12:30", "14:30", "16:30", "18:30"]
 
 # 表结构
 # 考点编号*,考点名称*,时间单元编号*,考试开始时间*,考场编号*,考场名称*,座位号*,考生学号*,考生姓名*,课程编号*,课程名称*,试卷号*
-s_keyIndex = 0  # 索引字段-学号
-s_typeIndex = 6  # 类型索引-课程编号
+s_keyIndex = 2  # 索引字段-学号
+s_typeIndex = 4  # 类型索引-课程编号
 
 # 开始时间(周几)
 s_beginWeekDay = 0
@@ -73,9 +72,9 @@ def getTime(session):
     index = index - 1
 
     if month < 10:
-        month = "0" + str(month)
+        month = str(month)
     if day < 10:
-        day = "0" + str(day)
+        day = str(day)
     return str(year) + "/" + str(month) + "/" + str(day) + " " + s_times[int(index)], str(session)
 
 class Person:
@@ -141,6 +140,7 @@ class ExcelRow:
     def addValues(self, session, time, tag):
         self.values.append(session)
         self.values.append(time)
+        self.timeIndex = len(self.values) - 1
         self.values.append(tag)
 
     def getRowContent(self):
@@ -149,6 +149,8 @@ class ExcelRow:
             content += str(value) + ","
         return content.replace(",", "")
 
+    def getTimeIndex(self):
+        return self.timeIndex
 
 # 读原文件 xls
 def readXls():
@@ -352,6 +354,7 @@ def generateResult(headRow, personArr, resultFile):
     _sessionInfo = {}
     # 已排的人
     _sortKeys = []
+
     setFirstWeekExamNum()
 
     workbook = openpyxl.Workbook()
@@ -378,9 +381,13 @@ def generateResult(headRow, personArr, resultFile):
             for _index, value in enumerate(row.values):
                 # row, column 从 1 开始
                 cell = sheet.cell(row=_rowIndex, column=_index + 1)
-                # 科学计数法问题
-                # 设置单元格格式
-                cell.number_format = '0'  # 或者使用 '0.00' 等形式，确保数字以常规格式显示，而非科学计数法
+                if _index == row.getTimeIndex():
+                    # 设置单元格的时间格式
+                    cell.number_format = 'yyyy/m/d hh:mm'
+                else:
+                    # 科学计数法问题
+                    # 设置单元格格式
+                    cell.number_format = '0'  # 或者使用 '0.00' 等形式，确保数字以常规格式显示，而非科学计数法
                 cell.value = value
             _rowIndex += 1
 
