@@ -19,8 +19,9 @@ from datetime import datetime, timedelta
 s_dayNum = 6
 # 每场人数
 s_sessionNum = 100
-# 周末考试
-s_weekEnd = True
+# 第几天有间隔，间隔几天
+s_spaceIndex = 6
+s_spaceNum = 3
 
 # 时间排布
 s_begin_year = 2024
@@ -38,7 +39,7 @@ s_sortIndex = 7 # 排序索引
 # 开始时间(周几)
 s_beginWeekDay = 0
 # 开始周考试天数
-s_beginWeekSessionNum = 0
+s_beginStageSessionNum = 0
 # 表头
 s_head = ""
 
@@ -51,7 +52,7 @@ s_personKeys = []
 
 
 # 获取指定年月日相差天数的，年月日
-def calculate_new_date(year, month, day, days_difference):
+def calculate_new_date(year, month, day, days_difference):    
     # 构造日期对象
     current_date = datetime(year, month, day)
     # 计算相差指定天数后的日期
@@ -65,8 +66,16 @@ def getTime(session):
     global s_begin_day
     global s_dayNum
     global s_times
+    global s_spaceIndex
+    global s_spaceNum
+    global s_beginStageSessionNum
 
-    year, month, day = calculate_new_date(s_begin_year, s_begin_month, s_begin_day, (session - 1) / s_dayNum)
+    # bug-间隔天数没跨月，先这样处理了
+    _beginDay = s_begin_day
+    if session > s_beginStageSessionNum:
+        _beginDay = _beginDay + s_spaceNum
+
+    year, month, day = calculate_new_date(s_begin_year, s_begin_month, _beginDay, (session - 1) / s_dayNum)
     
     index = session % s_dayNum
     if index == 0:
@@ -83,6 +92,7 @@ class Person:
     def __init__(self, _key, _type):
         self.m_key = _key
         self.m_type = _type
+        self.sortIndex = None
         self.rows = []
 
     def getKey(self):
@@ -90,6 +100,11 @@ class Person:
 
     def addRow(self, row, _type):
         self.rows.append(row)
+        if self.sortIndex is None:
+            self.sortIndex = getSortIndex(row)
+        elif self.sortIndex != getSortIndex(row):
+            print("错误：一个人有多个 index", self.m_key)
+            exit()
 
     def getRowNum(self):
         return len(self.rows)
@@ -102,6 +117,9 @@ class Person:
             time, tag = getTime(session)
             row.addValues(session, time, tag)
             session += 1
+    
+    def getSortIndex(self):
+        return self.sortIndex
 
 
 # 寻找已有的 person
@@ -245,31 +263,32 @@ def sortPersons(personArr):
     length = len(personArr)
     for i in range(0, length):
         for j in range(i + 1, length):
-            if personArr[j].getRowNum() > personArr[i].getRowNum():
+            if personArr[j].getSortIndex() < personArr[i].getSortIndex():
+                temp = personArr[i]
+                personArr[i] = personArr[j]
+                personArr[j] = temp
+            elif personArr[j].getSortIndex() == personArr[i].getSortIndex() and personArr[j].getRowNum() > personArr[i].getRowNum():
                 temp = personArr[i]
                 personArr[i] = personArr[j]
                 personArr[j] = temp
     print(u"排序完毕")
 
 
-# 周内开始，并周末不安排考试时，返回第一周能进行的场次
-def setFirstWeekExamNum():
+# 第一阶段能进行的场次
+def setFirstStageExamNum():
     global s_dayNum
     global s_beginWeekDay
-    global s_weekEnd
-    global s_beginWeekSessionNum
+    global s_spaceIndex
+    global s_beginStageSessionNum
 
-    # 周末考试 或 从周一开始考，则不考虑一周无法考完的情况
-    if s_weekEnd or s_beginWeekDay == 1:
-        s_beginWeekSessionNum = 0
-    s_beginWeekSessionNum = (5 - s_beginWeekDay + 1) * s_dayNum
+    # 第一阶段场次
+    s_beginStageSessionNum = (s_spaceIndex - 1) * s_dayNum
 
 
 # 安排场次是否超天或超周
-def isSessionOverDayOrWeek(session, person):
+def isSessionOverDayOrStage(session, person):
     global s_dayNum
-    global s_weekEnd
-    global s_beginWeekSessionNum
+    global s_beginStageSessionNum
     
     _personLineNum = person.getRowNum()
     ### 是否超天
@@ -291,24 +310,13 @@ def isSessionOverDayOrWeek(session, person):
 
     if _costDay > _needDay:
         return True
-    ### 是否超周
-    if s_weekEnd:
-        # 周末考，不考虑超周
+    ### 不在第一阶段内，不超阶段
+    if session > s_beginStageSessionNum:
         return False
-    # 需要用到考试周数
-    _weekNum = s_dayNum * 5
-    _needWeek = math.ceil(_personLineNum / _weekNum)
-    # 耗费周数
-    # 当前周还剩余次数
-    _firstWeekLeft = session - s_beginWeekSessionNum
-    if _firstWeekLeft < 0:
-        _firstWeekLeft = -_firstWeekLeft + 1  # 第一周剩余的
-    else:
-        _firstWeekLeft = _weekNum - _firstWeekLeft + 1  # 后续周剩余的
-    if _personLineNum < _firstWeekLeft:
+    # 第一阶段够用
+    if s_beginStageSessionNum - session + 1 > _personLineNum:
         return False
-    _costWeek = math.ceil((_personLineNum - _firstWeekLeft) / _weekNum) + 1
-    return _costWeek > _needWeek
+    return True
 
 
 # 获取当前场次
@@ -322,8 +330,8 @@ def getNowSession(sessionInfo, person):
         if str(_session) in sessionInfo and sessionInfo[str(_session)] >= s_sessionNum:
             # 场次已满
             continue
-        if isSessionOverDayOrWeek(_session, person):
-            # 超天或超周
+        if isSessionOverDayOrStage(_session, person):
+            # 超天或超第一阶段
             continue
         if not isNextSessionEnough(_session, sessionInfo, person):
             # 后续 session 排满了
@@ -362,7 +370,7 @@ def generateResult(headRow, personArr, resultFile):
     # 已排的人
     _sortKeys = []
 
-    setFirstWeekExamNum()
+    setFirstStageExamNum()
 
     workbook = openpyxl.Workbook()
     sheet = workbook.active
@@ -432,6 +440,7 @@ if __name__ == '__main__':
     dateObject = datetime(s_begin_year, s_begin_month, s_begin_day)
     # 获取星期几（0为星期一，1为星期二，以此类推）
     s_beginWeekDay = dateObject.weekday() + 1
+    print("开始考试星期几--", s_beginWeekDay)
     
     resultFile = os.path.splitext(s_originalFile)[0] + "_result.xlsx"
     sortPersons(personArr)
