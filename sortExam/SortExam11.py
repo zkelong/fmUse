@@ -21,8 +21,8 @@ s_dayNum = 6
 # 每场人数
 s_sessionNum = 100
 # 第几天有间隔，间隔几天
-s_spaceIndex = 6
-s_spaceNum = 3
+s_spaceIndex = 5
+s_spaceNum = 4
 
 # 时间排布
 s_begin_year = 2024
@@ -362,7 +362,7 @@ def setFirstStageExamNum():
     global s_beginStageSessionNum
 
     # 第一阶段场次：下午不考试，减去几场
-    s_beginStageSessionNum = (s_spaceIndex - 1) * s_dayNum - 4
+    s_beginStageSessionNum = (s_spaceIndex - 1) * s_dayNum
 
 
 # 安排场次是否超天或超周
