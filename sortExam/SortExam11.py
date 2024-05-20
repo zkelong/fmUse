@@ -69,7 +69,6 @@ def getTime(session):
     global s_begin_day
     global s_dayNum
     global s_times
-    global s_spaceIndex
     global s_spaceNum
     global s_beginStageSessionNum
 
@@ -98,7 +97,6 @@ def getSpecialTime(session, firstSession, firstMonth, firstDay):
     global s_begin_day
     global s_dayNum
     global s_times
-    global s_spaceIndex
     global s_spaceNum
     global s_beginStageSessionNum
 
@@ -363,8 +361,8 @@ def setFirstStageExamNum():
     global s_spaceIndex
     global s_beginStageSessionNum
 
-    # 第一阶段场次
-    s_beginStageSessionNum = (s_spaceIndex - 1) * s_dayNum
+    # 第一阶段场次：下午不考试，减去几场
+    s_beginStageSessionNum = (s_spaceIndex - 1) * s_dayNum - 4
 
 
 # 安排场次是否超天或超周
