@@ -13,6 +13,10 @@ from datetime import datetime, timedelta
 # 一周能考完的不跨周
 # openpyxl: pip install openpyxl
 # 使用 python3 运行脚本
+# 每个人还是连考，每次考一科
+# 标记为 1 的优先放入 78 座教室，如果放不下，放入 86 座教室
+# 标记为 2 的优先放入 86 座教室，放不下再放 1 的
+# 6月14.15.16号
 # ///////////////////////////////////////////////////
 
 # 每日场次 python 2.7 整数相除为整数，没有小数
@@ -25,14 +29,17 @@ s_weekEnd = False
 
 # 时间排布
 s_begin_year = 2023
-s_begin_month = 12
-s_begin_day = 11
+s_begin_month = 6
+s_begin_day = 14
 s_times = ["8:30", "10:30", "12:30", "14:30", "16:30", "18:30"]
 
 # 表结构
 # 考点编号*,考点名称*,时间单元编号*,考试开始时间*,考场编号*,考场名称*,座位号*,考生学号*,考生姓名*,课程编号*,课程名称*,试卷号*
 s_keyIndex = 0  # 索引字段-学号
 s_typeIndex = 6  # 类型索引-课程编号
+
+# 教室标记
+s_roomTypeIndex = 7
 
 # 开始时间(周几)
 s_beginWeekDay = 0
@@ -79,13 +86,17 @@ def getTime(session):
     return str(year) + "/" + str(month) + "/" + str(day) + " " + s_times[int(index)], str(session)
 
 class Person:
-    def __init__(self, _key, _type):
+    def __init__(self, _key, _type, _roomType):
         self.m_key = _key
         self.m_type = _type
+        self.m_roomType = _roomType
         self.rows = []
 
     def getKey(self):
         return self.m_key
+    
+    def getRoomType(self):
+        return self.m_roomType
 
     def addRow(self, row, _type):
         self.rows.append(row)
@@ -115,8 +126,9 @@ def getPerson(_key, personArr):
 def getKeyAndType(row):
     global s_keyIndex
     global s_typeIndex
+    global s_roomTypeIndex
 
-    return row.values[s_keyIndex], row.values[s_typeIndex]
+    return row.values[s_keyIndex], row.values[s_typeIndex], row.values[s_roomTypeIndex]
 
 
 # ///////// 读 excel 内容 ///////////////
@@ -180,13 +192,13 @@ def readXls():
             for col in range(sheet.ncols):
                 value = sheet.cell_value(row, col)
                 excel_row.addValue(value)
-            _key, _type = getKeyAndType(excel_row)
+            _key, _type, _rommType = getKeyAndType(excel_row)
             person = getPerson(_key, personArr)
             if person is None:
                 s_personKeys.append(_key)
-                person = Person(_key, _type)
+                person = Person(_key, _type, _rommType)
                 personArr.append(person)
-            person.addRow(excel_row, _type)
+            person.addRow(excel_row, _type, _rommType)
         row_index += 1
 
     print(u"场数：{}".format(row_index - 1))
@@ -216,11 +228,11 @@ def readXlsx():
             headRow.addValues("session", "time", "time_tag")
         else:
             row = ExcelRow(_row)
-            _key, _type = getKeyAndType(row)
+            _key, _type, _rommType = getKeyAndType(row)
             person = getPerson(_key, personArr)
             if person is None:
                 s_personKeys.append(_key)
-                person = Person(_key, _type)
+                person = Person(_key, _type, _rommType)
                 personArr.append(person)
             person.addRow(row, _type)
         row_index += 1
@@ -259,8 +271,6 @@ def setFirstWeekExamNum():
 # 安排场次是否超天或超周
 def isSessionOverDayOrWeek(session, person):
     global s_dayNum
-    global s_weekEnd
-    global s_beginWeekSessionNum
     
     _personLineNum = person.getRowNum()
     ### 是否超天
@@ -282,53 +292,71 @@ def isSessionOverDayOrWeek(session, person):
 
     if _costDay > _needDay:
         return True
-    ### 是否超周
-    if s_weekEnd:
-        # 周末考，不考虑超周
-        return False
-    # 需要用到考试周数
-    _weekNum = s_dayNum * 5
-    _needWeek = math.ceil(_personLineNum / _weekNum)
-    # 耗费周数
-    # 当前周还剩余次数
-    _firstWeekLeft = session - s_beginWeekSessionNum
-    if _firstWeekLeft < 0:
-        _firstWeekLeft = -_firstWeekLeft + 1  # 第一周剩余的
-    else:
-        _firstWeekLeft = _weekNum - _firstWeekLeft + 1  # 后续周剩余的
-    if _personLineNum < _firstWeekLeft:
-        return False
-    _costWeek = math.ceil((_personLineNum - _firstWeekLeft) / _weekNum) + 1
-    return _costWeek > _needWeek
+    return False
 
-
-# 获取当前场次
-def getNowSession(sessionInfo, person):
-    global s_dayNum
-    global s_sessionNum
-
+# 获取当前场次-教室1
+def getNowSession1(sessionInfo1, sessionInfo2, person):
     _session = 0
+    _roomTypes = []
     while True:
         _session += 1
-        if str(_session) in sessionInfo and sessionInfo[str(_session)] >= s_sessionNum:
-            # 场次已满
+        # 只有3天，共18场
+        if _session > 18:
+            break
+        # 教室1 座位：78
+        if str(_session) in sessionInfo1 and sessionInfo1[str(_session)] >= 78:
+            # 当前场次已满
             continue
         if isSessionOverDayOrWeek(_session, person):
             # 超天或超周
             continue
-        if not isNextSessionEnough(_session, sessionInfo, person):
+        if not isNextSessionEnough(_session, sessionInfo1, person, 78):
             # 后续 session 排满了
             continue
+        return _session, _roomTypes
+    _session = 0
+    while True:
+        _session += 1
+        # 只有3天，共18场
+        if _session > 18:
+            break
+        if str(_session) in sessionInfo1 and sessionInfo1[str(_session)] >= 78:
+            if str(_session) in sessionInfo2 and sessionInfo2[str(_session)] >= 86:
+                # 当前场次已满
+                continue
+        if isSessionOverDayOrWeek(_session, person):
+            # 超天或超周
+            continue
+        if not isNextSessionEnough(_session, sessionInfo1, person, 78):
+            if not isNextSessionEnough(_session, sessionInfo2, person, 86):
+                # 后续 session 排满了
+                continue
+        rowNum = person.getRowNum()
+        for i in range(_session, _session + person.getRowNum()):
+            _sKey = str(i)
+            if _sKey in sessionInfo1 and sessionInfo1[_sKey] >= 78:
+                _roomTypes.append(2)
+            else:
+                _roomTypes.append(1)
         return _session
+    return None, None
 
+# 教室标记
+def separatePerson(personArr):
+    result = []
+    resultSpecial = []
+    for p in personArr:
+        if p.getRoomType() == 1:
+            result.append(p)
+        else:
+            resultSpecial.append(p)
+    return result, resultSpecial
 
 # 后续场次是否足够
-def isNextSessionEnough(session, sessionInfo, person):
-    global s_sessionNum
-
+def isNextSessionEnough(session, sessionInfo, person, num):
     for i in range(session, session + person.getRowNum()):
         _sKey = str(i)
-        if _sKey in sessionInfo and sessionInfo[_sKey] >= s_sessionNum:
+        if _sKey in sessionInfo and sessionInfo[_sKey] >= num:
             return False
     return True
 
@@ -344,14 +372,14 @@ def addSessionInfo(sessionInfo, session, person):
 
 
 # 开始排序，获得结果
-def generateResult(headRow, personArr, resultFile):
+def generateResult(headRow, personArr, specailPersonArr, resultFile):
     global s_head
 
     print(u"获取结果内容")
-    # 场次信息：{"1":100} 场次对应次数
-    _sessionInfo = {}
-    # 已排的人
-    _sortKeys = []
+    # 教室1场次信息：{"1":100} 场次对应次数
+    _sessionInfo1 = {}
+    # 教室2场次信息：{"1":100} 场次对应次数
+    _sessionInfo2 = {}
     setFirstWeekExamNum()
 
     workbook = openpyxl.Workbook()
@@ -366,12 +394,31 @@ def generateResult(headRow, personArr, resultFile):
     # 上面加了头，从第二行开始写
     _rowIndex = 2
     personIndex = 0
+    
+    
     for person in personArr:
-        _personKey = person.getKey()
+        # 获取从哪场开始排
+        session = getNowSession1(_sessionInfo1, _sessionInfo2, person)
+        if session is None:
+            print("安排不下")
+            exit()
+        addSessionInfo(_sessionInfo, session, person)
+        person.setSession(session)
+        personIndex += 1
+        for index, row in enumerate(person.getRows()):
+            for _index, value in enumerate(row.values):
+                # row, column 从 1 开始
+                cell = sheet.cell(row=_rowIndex, column=_index + 1)
+                # 科学计数法问题
+                # 设置单元格格式
+                cell.number_format = '0'  # 或者使用 '0.00' 等形式，确保数字以常规格式显示，而非科学计数法
+                cell.value = value
+            _rowIndex += 1
+            
+    for person in specailPersonArr:
         # 获取从哪场开始排
         session = getNowSession(_sessionInfo, person)
         addSessionInfo(_sessionInfo, session, person)
-        _sortKeys.append(_personKey)
         person.setSession(session)
         personIndex += 1
         for index, row in enumerate(person.getRows()):
@@ -418,8 +465,10 @@ if __name__ == '__main__':
     dateObject = datetime(s_begin_year, s_begin_month, s_begin_day)
     # 获取星期几（0为星期一，1为星期二，以此类推）
     s_beginWeekDay = dateObject.weekday() + 1
-    
+    # 分离特殊角色
+    personArr, specailPersonArr= separatePerson(personArr)
     resultFile = os.path.splitext(s_originalFile)[0] + "_result.xlsx"
     sortPersons(personArr)
-    generateResult(headRow, personArr, resultFile)
+    sortPersons(specailPersonArr)
+    generateResult(headRow, personArr, specailPersonArr, resultFile)
     print(u"导出完毕：{}".format(resultFile))
